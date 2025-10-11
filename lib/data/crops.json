@@ -1,0 +1,162 @@
+[
+  {
+    "name": "Maize",
+    "season": "Rainy",
+    "careTip": "Ensure adequate soil moisture during germination.",
+    "minTemp": 18,
+    "maxTemp": 27,
+    "icon": "🌽"
+  },
+  {
+    "name": "Rice",
+    "season": "Wet",
+    "careTip": "Keep fields flooded during early growth stages.",
+    "minTemp": 20,
+    "maxTemp": 30,
+    "icon": "🌾"
+  },
+  {
+    "name": "Wheat",
+    "season": "Cool",
+    "careTip": "Avoid waterlogging and ensure good drainage.",
+    "minTemp": 10,
+    "maxTemp": 25,
+    "icon": "🌱"
+  },
+  {
+    "name": "Tomato",
+    "season": "Warm",
+    "careTip": "Stake plants and monitor for pests.",
+    "minTemp": 15,
+    "maxTemp": 27,
+    "icon": "🍅"
+  },
+  {
+    "name": "Cassava",
+    "season": "Warm",
+    "careTip": "Harvest when leaves turn yellow.",
+    "minTemp": 20,
+    "maxTemp": 32,
+    "icon": "🥔"
+  },
+  {
+    "name": "Sorghum",
+    "season": "Dry",
+    "careTip": "Thin seedlings to avoid overcrowding.",
+    "minTemp": 20,
+    "maxTemp": 32,
+    "icon": "🌾"
+  },
+  {
+    "name": "Millet",
+    "season": "Dry",
+    "careTip": "Weed regularly during early growth.",
+    "minTemp": 22,
+    "maxTemp": 32,
+    "icon": "🌾"
+  },
+  {
+    "name": "Soybean",
+    "season": "Warm",
+    "careTip": "Inoculate seeds with rhizobium.",
+    "minTemp": 20,
+    "maxTemp": 30,
+    "icon": "🌱"
+  },
+  {
+    "name": "Groundnut",
+    "season": "Warm",
+    "careTip": "Avoid waterlogging and harvest on time.",
+    "minTemp": 20,
+    "maxTemp": 30,
+    "icon": "🥜"
+  },
+  {
+    "name": "Cowpea",
+    "season": "Warm",
+    "careTip": "Control aphids and thrips early.",
+    "minTemp": 21,
+    "maxTemp": 30,
+    "icon": "🌱"
+  },
+  {
+    "name": "Yam",
+    "season": "Rainy",
+    "careTip": "Stake vines and mulch to retain moisture.",
+    "minTemp": 22,
+    "maxTemp": 30,
+    "icon": "🍠"
+  },
+  {
+    "name": "Sweet Potato",
+    "season": "Warm",
+    "careTip": "Plant on ridges for better yield.",
+    "minTemp": 20,
+    "maxTemp": 30,
+    "icon": "🍠"
+  },
+  {
+    "name": "Cabbage",
+    "season": "Cool",
+    "careTip": "Apply organic manure before planting.",
+    "minTemp": 15,
+    "maxTemp": 22,
+    "icon": "🥬"
+  },
+  {
+    "name": "Carrot",
+    "season": "Cool",
+    "careTip": "Thin seedlings to 5cm apart.",
+    "minTemp": 16,
+    "maxTemp": 22,
+    "icon": "🥕"
+  },
+  {
+    "name": "Onion",
+    "season": "Cool",
+    "careTip": "Irrigate moderately and avoid flooding.",
+    "minTemp": 13,
+    "maxTemp": 25,
+    "icon": "🧅"
+  },
+  {
+    "name": "Pepper",
+    "season": "Warm",
+    "careTip": "Mulch to conserve soil moisture.",
+    "minTemp": 18,
+    "maxTemp": 30,
+    "icon": "🌶️"
+  },
+  {
+    "name": "Okra",
+    "season": "Warm",
+    "careTip": "Harvest pods when young and tender.",
+    "minTemp": 20,
+    "maxTemp": 30,
+    "icon": "🍆"
+  },
+  {
+    "name": "Spinach",
+    "season": "Cool",
+    "careTip": "Harvest leaves regularly to encourage growth.",
+    "minTemp": 10,
+    "maxTemp": 22,
+    "icon": "🥬"
+  },
+  {
+    "name": "Pumpkin",
+    "season": "Warm",
+    "careTip": "Provide enough space for vines to spread.",
+    "minTemp": 18,
+    "maxTemp": 30,
+    "icon": "🎃"
+  },
+  {
+    "name": "Banana",
+    "season": "Rainy",
+    "careTip": "Support plants with stakes to prevent lodging.",
+    "minTemp": 20,
+    "maxTemp": 30,
+    "icon": "🍌"
+  }
+]
