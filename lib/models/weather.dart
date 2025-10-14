@@ -23,6 +23,9 @@ class Weather {
               ? json['weather'][0]['description'] ?? ''
               : '',
       rainfall: rainfall,
+      humidity: (json['main']?['humidity'] as num?)?.toDouble() ?? 0.0,
+      windSpeed: (json['wind']?['speed'] as num?)?.toDouble() ?? 0.0,
+      pressure: (json['main']?['pressure'] as num?)?.toInt() ?? 0,
     );
   }
   final String description;
@@ -30,6 +33,9 @@ class Weather {
   final String condition;
   final String forecast;
   final double rainfall;
+  final double humidity;
+  final double windSpeed;
+  final int pressure;
 
   Weather({
     required this.description,
@@ -37,5 +43,8 @@ class Weather {
     required this.condition,
     required this.forecast,
     required this.rainfall,
+    required this.humidity,
+    required this.windSpeed,
+    required this.pressure,
   });
 }

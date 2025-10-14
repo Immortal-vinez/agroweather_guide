@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:agroweather_guide/models/weather.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../widgets/trust_signals_card.dart';
@@ -10,13 +11,12 @@ import '../widgets/dashboard_header.dart';
 import '../widgets/alert_banner.dart';
 import '../widgets/crop_recommendation_card.dart';
 import '../widgets/recent_alerts_section.dart';
-import '../widgets/weather_forecast_section.dart';
-import '../models/weather.dart';
 import '../models/crop.dart';
 import '../services/notification_service.dart';
 import '../services/weather_service.dart';
-import '../models/weather_forecast.dart';
 import 'crop_details_screen.dart';
+import 'crops_list_screen.dart';
+import 'weather_screen.dart';
 import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -29,7 +29,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final List<String> _recentAlerts = [];
   int _selectedIndex = 0;
-  Crop? _selectedCrop;
   final List<String> _userNotes = [];
 
   // Add your OpenWeatherMap API key here
@@ -64,14 +63,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  Future<List<HourlyForecast>> _fetchHourly(double lat, double lon) async {
-    final service = WeatherService(_weatherApiKey);
-    return await service.fetchHourlyForecast(_userLat ?? lat, _userLon ?? lon);
-  }
-
-  Future<List<DailyForecast>> _fetchDaily(double lat, double lon) async {
-    final service = WeatherService(_weatherApiKey);
-    return await service.fetchDailyForecast(_userLat ?? lat, _userLon ?? lon);
+  Future<void> _refreshData() async {
+    setState(() {});
   }
 
   @override
@@ -138,13 +131,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-    });
-  }
-
-  void _onCropTap(Crop crop) {
-    setState(() {
-      _selectedCrop = crop;
-      _selectedIndex = 1; // Go to crop details tab
     });
   }
 
@@ -267,6 +253,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   final List<Crop> _userAddedCrops = [];
 
+  Widget _buildQuickActionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              LucideIcons.chevronRight,
+              color: Colors.grey.shade400,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Use FutureBuilder to fetch real-time weather data
@@ -317,6 +356,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       'Lat: ${_userLat!.toStringAsFixed(2)}, Lon: ${_userLon!.toStringAsFixed(2)}',
                   lastUpdate:
                       '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                  onRefresh: _refreshData,
                 ),
               ),
               const SizedBox(height: 10),
@@ -383,103 +423,98 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              // 7-Day Forecast Section
+              const SizedBox(height: 20),
+              // 7-Day Forecast Section (Simplified placeholder)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: FutureBuilder<List<HourlyForecast>>(
-                  future: _fetchHourly(_userLat!, _userLon!),
-                  builder: (context, hourlySnap) {
-                    return FutureBuilder<List<DailyForecast>>(
-                      future: _fetchDaily(_userLat!, _userLon!),
-                      builder: (context, dailySnap) {
-                        if (hourlySnap.connectionState ==
-                                ConnectionState.waiting ||
-                            dailySnap.connectionState ==
-                                ConnectionState.waiting) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        } else if (hourlySnap.hasError || dailySnap.hasError) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Center(
-                              child: Text('Error loading forecast'),
-                            ),
-                          );
-                        } else if (!hourlySnap.hasData || !dailySnap.hasData) {
-                          return const SizedBox.shrink();
-                        }
-                        return WeatherForecastSection(
-                          hourly: hourlySnap.data!,
-                          daily: dailySnap.data!,
-                        );
-                      },
-                    );
-                  },
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '7-Day Forecast',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                    Icon(
+                      LucideIcons.calendar,
+                      color: Color(0xFF4CAF50),
+                      size: 20,
+                    ),
+                  ],
                 ),
               ),
-              // Water Analytics Placeholder
+              const SizedBox(height: 12),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Card(
-                  color: const Color(0xFFE3F2FD),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
                       children: [
-                        Icon(
-                          LucideIcons.droplets,
-                          color: Color(0xFF4CAF50),
-                          size: 32,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              LucideIcons.cloudSun,
+                              size: 32,
+                              color: Color(0xFF4CAF50),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Coming Soon',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                'Water Analytics',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Track irrigation and rainfall for optimal crop growth.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 8),
+                        Text(
+                          'Extended forecast will be available soon',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
-              // Crop Recommendations
+              const SizedBox(height: 20),
+              // Crop Recommendations Header
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Text(
-                  'Recommended Crops',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF4CAF50),
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Recommended Crops',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                    Icon(
+                      LucideIcons.sprout,
+                      color: Color(0xFF4CAF50),
+                      size: 20,
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 0),
                 child: FutureBuilder<List<Crop>>(
@@ -538,7 +573,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             }
 
                             return GestureDetector(
-                              onTap: () => _onCropTap(crop),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CropDetailsScreen(crop: crop),
+                                  ),
+                                );
+                              },
                               child: CropRecommendationCard(
                                 crop: crop,
                                 suitability: suitability,
@@ -569,40 +611,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
               // Quick Actions Section
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Quick Actions',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Color(0xFF2E7D32),
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        _buildQuickActionTile(
+                          icon: LucideIcons.stickyNote,
+                          title: 'Add Note',
+                          subtitle: 'Create a farming reminder',
+                          color: Colors.amber,
+                          onTap: _showAddNoteDialog,
                         ),
-                      ),
-                      onPressed: _showAddNoteDialog,
-                      icon: Icon(LucideIcons.stickyNote),
-                      label: const Text('Add Note'),
-                    ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        const Divider(height: 24),
+                        _buildQuickActionTile(
+                          icon: LucideIcons.sprout,
+                          title: 'Add Custom Crop',
+                          subtitle: 'Track your own crop varieties',
+                          color: Colors.green,
+                          onTap: _showAddCropDialog,
                         ),
-                      ),
-                      onPressed: _showAddCropDialog,
-                      icon: Icon(LucideIcons.sprout),
-                      label: const Text('Add Crop'),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
               // Recent Alerts
@@ -615,29 +666,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               // Notes & Reminders
               if (_userNotes.isNotEmpty) ...[
+                const SizedBox(height: 20),
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Text(
-                    'Your Notes & Reminders',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4CAF50),
-                    ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Your Notes & Reminders',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                      Icon(
+                        LucideIcons.stickyNote,
+                        color: Color(0xFF4CAF50),
+                        size: 20,
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(height: 12),
                 ..._userNotes.map(
-                  (note) => Card(
-                    margin: const EdgeInsets.symmetric(
+                  (note) => Padding(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 4,
                     ),
-                    child: ListTile(
-                      leading: const Icon(Icons.note, color: Color(0xFFFFA000)),
-                      title: Text(note),
+                    child: Card(
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.amber.shade200),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            LucideIcons.stickyNote,
+                            color: Colors.amber.shade700,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(note, style: const TextStyle(fontSize: 14)),
+                        trailing: IconButton(
+                          icon: Icon(
+                            LucideIcons.trash2,
+                            color: Colors.red.shade300,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _userNotes.remove(note);
+                            });
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -650,19 +740,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     );
 
-    final cropDetailsPage =
-        _selectedCrop != null
-            ? CropDetailsScreen(crop: _selectedCrop!)
-            : const Center(child: Text('Select a crop to view details.'));
+    // Build crops list screen with current weather data for recommendations
+    final cropsPage = FutureBuilder<Weather>(
+      future: _userLat != null && _userLon != null
+          ? WeatherService(_weatherApiKey).fetchCurrentWeather(_userLat!, _userLon!)
+          : null,
+      builder: (context, snapshot) {
+        return CropsListScreen(
+          currentWeather: snapshot.data,
+        );
+      },
+    );
 
+    final weatherPage = const WeatherScreen();
     final settingsPage = const SettingsScreen();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('AgroWeather Guide'),
+        title: Row(
+          children: [
+            Icon(LucideIcons.sprout, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'AgroWeather',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF4CAF50),
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: Container(
         width: double.infinity,
@@ -679,21 +787,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: IndexedStack(
           index: _selectedIndex,
-          children: [dashboardPage, cropDetailsPage, settingsPage],
+          children: [dashboardPage, weatherPage, cropsPage, settingsPage],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: const Color(0xFF4CAF50),
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        backgroundColor: Colors.white,
         items: [
           BottomNavigationBarItem(
-            icon: Icon(LucideIcons.cloud),
-            label: 'Dashboard',
+            icon: Icon(LucideIcons.layoutDashboard),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(LucideIcons.cloudSun),
+            label: 'Weather',
           ),
           BottomNavigationBarItem(
             icon: Icon(LucideIcons.sprout),
-            label: 'Crop Details',
+            label: 'Crops',
           ),
           BottomNavigationBarItem(
             icon: Icon(LucideIcons.settings),
@@ -701,27 +817,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      floatingActionButton:
-          _selectedIndex == 0
-              ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FloatingActionButton(
-                    heroTag: 'addNote',
-                    backgroundColor: const Color(0xFF4CAF50),
-                    onPressed: _showAddNoteDialog,
-                    child: Icon(LucideIcons.stickyNote, color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  FloatingActionButton(
-                    heroTag: 'addCrop',
-                    backgroundColor: const Color(0xFF4CAF50),
-                    onPressed: _showAddCropDialog,
-                    child: Icon(LucideIcons.sprout, color: Colors.white),
-                  ),
-                ],
-              )
-              : null,
     );
   }
 }

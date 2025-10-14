@@ -50,4 +50,19 @@ class WeatherService {
       throw Exception('Failed to load daily forecast');
     }
   }
+
+  Future<List<Weather>> fetchWeatherForecast(double lat, double lon) async {
+    final url = Uri.parse(
+      'https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&exclude=current,minutely,hourly,alerts&units=metric&appid=$apiKey',
+    );
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List<dynamic> daily = data['daily'];
+      // Map daily forecast to Weather objects (assuming Weather.fromJson can handle daily format)
+      return daily.map((e) => Weather.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load weather forecast');
+    }
+  }
 }

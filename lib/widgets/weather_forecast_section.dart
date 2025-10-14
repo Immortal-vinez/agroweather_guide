@@ -1,4 +1,4 @@
-import '../models/weather_forecast.dart';
+import 'package:weather/weather.dart';
 import 'package:flutter/material.dart';
 
 // Helper functions must be top-level, not inside build or widget methods
@@ -7,7 +7,8 @@ String weekdayName(DateTime date) {
   return days[date.weekday % 7];
 }
 
-IconData weatherIcon(String condition) {
+IconData weatherIcon(String? condition) {
+  if (condition == null) return Icons.cloud;
   switch (condition.toLowerCase()) {
     case 'rain':
       return Icons.beach_access;
@@ -25,8 +26,8 @@ IconData weatherIcon(String condition) {
 }
 
 class WeatherForecastSection extends StatelessWidget {
-  final List<HourlyForecast> hourly;
-  final List<DailyForecast> daily;
+  final List<Weather> hourly;
+  final List<Weather> daily;
   const WeatherForecastSection({
     super.key,
     required this.hourly,
@@ -35,6 +36,8 @@ class WeatherForecastSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool noHourly = hourly.isEmpty;
+    final bool noDaily = daily.isEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -49,39 +52,59 @@ class WeatherForecastSection extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(
-          height: 90,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: hourly.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) {
-              final h = hourly[i];
-              return Container(
-                width: 70,
-                decoration: BoxDecoration(
-                  color: Color(0xFF81D4FA),
-                  borderRadius: BorderRadius.circular(12),
+        if (noHourly)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                Icon(Icons.hourglass_empty, color: Colors.grey, size: 32),
+                SizedBox(height: 8),
+                Text(
+                  'No hourly forecast data available',
+                  style: TextStyle(color: Colors.red),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${h.time.hour}:00',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    Icon(weatherIcon(h.condition), color: Color(0xFFFFEB3B)),
-                    Text(
-                      '${h.temperature.toStringAsFixed(0)}°C',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              );
-            },
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 90,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: hourly.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, i) {
+                final h = hourly[i];
+                return Container(
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF81D4FA),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        h.date != null ? '${h.date!.hour}:00' : '--:--',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                      Icon(
+                        weatherIcon(h.weatherMain),
+                        color: Color(0xFFFFEB3B),
+                      ),
+                      Text(
+                        h.temperature != null
+                            ? '${h.temperature!.celsius?.toStringAsFixed(0)}°C'
+                            : '--°C',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
@@ -93,58 +116,88 @@ class WeatherForecastSection extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(
-          height: 110,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: daily.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) {
-              final d = daily[i];
-              return Container(
-                width: 90,
-                decoration: BoxDecoration(
-                  color: Color(0xFF81D4FA),
-                  borderRadius: BorderRadius.circular(12),
+        if (noDaily)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.grey, size: 32),
+                SizedBox(height: 8),
+                Text(
+                  'No daily forecast data available',
+                  style: TextStyle(color: Colors.red),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      weekdayName(d.date),
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 110,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: daily.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, i) {
+                final d = daily[i];
+                return Container(
+                  width: 90,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF81D4FA),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        d.date != null ? weekdayName(d.date!) : '--',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                    Icon(weatherIcon(d.condition), color: Color(0xFF90A4AE)),
-                    Text(
-                      '${d.maxTemp.toStringAsFixed(0)}°/${d.minTemp.toStringAsFixed(0)}°',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                      Icon(
+                        weatherIcon(d.weatherMain),
+                        color: Color(0xFF90A4AE),
                       ),
-                    ),
-                    Text(
-                      d.condition,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
+                      Text(
+                        d.tempMax != null && d.tempMin != null
+                            ? '${d.tempMax!.celsius?.toStringAsFixed(0)}°/${d.tempMin!.celsius?.toStringAsFixed(0)}°'
+                            : '--/--',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Rain: ${d.rainfall.toStringAsFixed(1)} mm',
-                      style: const TextStyle(fontSize: 12, color: Colors.blue),
-                    ),
-                  ],
-                ),
-              );
-            },
+                      Text(
+                        d.weatherMain ?? '--',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      Text(
+                        d.rainLast3h != null
+                            ? 'Rain: ${d.rainLast3h!.toStringAsFixed(1)} mm'
+                            : 'Rain: -- mm',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
+}
+
+extension on Weather {
+  // ignore: strict_top_level_inference
+  get rainLast3h => null;
 }
