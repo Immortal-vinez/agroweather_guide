@@ -14,10 +14,14 @@ import '../widgets/recent_alerts_section.dart';
 import '../models/crop.dart';
 import '../services/notification_service.dart';
 import '../services/weather_service.dart';
+import '../config/env.dart';
 import 'crop_details_screen.dart';
 import 'crops_list_screen.dart';
 import 'weather_screen.dart';
 import 'settings_screen.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
+import '../widgets/offline_banner.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -31,39 +35,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   final List<String> _userNotes = [];
 
-  // Add your OpenWeatherMap API key here
-  final String _weatherApiKey = 'YOUR_OPENWEATHERMAP_API_KEY';
+  // API key sourced from --dart-define to avoid hardcoding secrets
+  final String _weatherApiKey = Env.openWeatherApiKey;
+  bool get _demoMode => !Env.hasApiKey;
+  bool _isOffline = false;
+  StreamSubscription<List<ConnectivityResult>>? _connSub;
 
   double? _userLat;
   double? _userLon;
+  // Track location fetch state and issues
+  bool _triedLocation = false;
+  String? _locationIssue;
 
   Future<void> _getUserLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      await Geolocator.openLocationSettings();
-      return;
-    }
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
+    try {
+      setState(() {
+        _triedLocation = true;
+        _locationIssue = null;
+      });
+
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _locationIssue = 'Location services are turned off.';
+        });
         return;
       }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _locationIssue = 'Location permission denied.';
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _locationIssue =
+              'Location permission permanently denied. Enable it in Settings or use a default location.';
+        });
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        // ignore: deprecated_member_use
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _userLat = position.latitude;
+        _userLon = position.longitude;
+        _locationIssue = null;
+      });
+    } catch (e) {
+      setState(() {
+        _locationIssue = 'Failed to get location: ${e.toString()}';
+      });
     }
-    if (permission == LocationPermission.deniedForever) {
-      return;
-    }
-    Position position = await Geolocator.getCurrentPosition(
-      // ignore: deprecated_member_use
-      desiredAccuracy: LocationAccuracy.high,
-    );
+  }
+
+  Future<void> _useDefaultLocation() async {
+    // Default to Nairobi, Kenya (you can change these coords)
+    const double defaultLat = -1.286389;
+    const double defaultLon = 36.817223;
     setState(() {
-      _userLat = position.latitude;
-      _userLon = position.longitude;
+      _userLat = defaultLat;
+      _userLon = defaultLon;
+      _locationIssue = null;
     });
   }
 
+  // Auto-use default location if location services fail
+  Future<void> _autoUseDefaultLocation() async {
+    await Future.delayed(const Duration(seconds: 3)); // Wait 3 seconds
+    if (_userLat == null && _userLon == null) {
+      _useDefaultLocation();
+    }
+  }
+
   Future<void> _refreshData() async {
+    // Re-evaluate connectivity and location, then rebuild
+    final results = await Connectivity().checkConnectivity();
+    setState(() {
+      _isOffline = results.contains(ConnectivityResult.none);
+    });
+    if (!_isOffline && (_userLat == null || _userLon == null)) {
+      await _getUserLocation();
+    }
     setState(() {});
   }
 
@@ -72,6 +133,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     NotificationService.initialize();
     _getUserLocation();
+    _autoUseDefaultLocation(); // Auto-fallback to default location
+    _initConnectivityWatcher();
+  }
+
+  void _initConnectivityWatcher() async {
+    // Initial state
+    final initial = await Connectivity().checkConnectivity();
+    setState(() {
+      _isOffline = initial.contains(ConnectivityResult.none);
+    });
+    // Listen for changes
+    _connSub = Connectivity().onConnectivityChanged.listen((list) {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = list.contains(ConnectivityResult.none);
+      });
+    });
   }
 
   Future<List<Crop>> _loadRecommendedCrops(Weather weather) async {
@@ -132,6 +210,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  Widget _buildLocationPrompt() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.mapPin, size: 56, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(
+            'Location Required',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _locationIssue ??
+                'Please enable location to view local weather and recommendations.',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _getUserLocation,
+                icon: const Icon(Icons.my_location),
+                label: const Text('Enable Location'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _useDefaultLocation,
+                icon: const Icon(Icons.place),
+                label: const Text('Use Default'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF4CAF50),
+                  side: const BorderSide(color: Color(0xFF4CAF50)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddNoteDialog() {
@@ -270,6 +408,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
+                // ignore: deprecated_member_use
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -311,13 +450,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Use FutureBuilder to fetch real-time weather data
     final dashboardPage = FutureBuilder<Weather>(
       future:
-          _userLat != null && _userLon != null
+          _userLat != null && _userLon != null && !_isOffline
               ? WeatherService(
                 _weatherApiKey,
+                demoMode: _demoMode,
               ).fetchCurrentWeather(_userLat!, _userLon!)
               : null,
       builder: (context, snapshot) {
+        if (_isOffline) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OfflineBanner(onRetry: _refreshData),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.wifi_off,
+                          size: 48,
+                          color: Colors.red.shade300,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'You are offline',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Reconnect to load live weather and recommendations.',
+                          style: TextStyle(color: Colors.grey.shade700),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _refreshData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
         if (_userLat == null || _userLon == null) {
+          // If we tried and have an issue, show prompt instead of endless spinner
+          if (_locationIssue != null || _triedLocation) {
+            return _buildLocationPrompt();
+          }
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -349,6 +542,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_isOffline) OfflineBanner(onRetry: _refreshData),
+              if (_demoMode)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Card(
+                    color: const Color(0xFFFFF3E0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: Text(
+                        'Demo data shown. Set OPENWEATHER_API_KEY via --dart-define to enable live data.',
+                        style: TextStyle(color: Color(0xFFEF6C00)),
+                      ),
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: DashboardHeader(
@@ -577,7 +788,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => CropDetailsScreen(crop: crop),
+                                    builder:
+                                        (context) =>
+                                            CropDetailsScreen(crop: crop),
                                   ),
                                 );
                               },
@@ -742,13 +955,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Build crops list screen with current weather data for recommendations
     final cropsPage = FutureBuilder<Weather>(
-      future: _userLat != null && _userLon != null
-          ? WeatherService(_weatherApiKey).fetchCurrentWeather(_userLat!, _userLon!)
-          : null,
+      future:
+          _userLat != null && _userLon != null
+              ? WeatherService(
+                _weatherApiKey,
+              ).fetchCurrentWeather(_userLat!, _userLon!)
+              : null,
       builder: (context, snapshot) {
-        return CropsListScreen(
-          currentWeather: snapshot.data,
-        );
+        return CropsListScreen(currentWeather: snapshot.data);
       },
     );
 
@@ -818,5 +1032,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _connSub?.cancel();
+    super.dispose();
   }
 }

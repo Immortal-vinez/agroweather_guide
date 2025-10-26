@@ -82,42 +82,66 @@ class QuickActionsCard extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Expanded(
-          child: ElevatedButton.icon(
+          child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF81C784),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 22),
+              padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            icon: Icon(LucideIcons.listChecks, size: 28),
-            label: const Text("Today's Tasks"),
             onPressed: onTasksTap,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(LucideIcons.listChecks, size: 22),
+                const SizedBox(width: 8),
+                const Flexible(
+                  child: Text(
+                    "Today's Tasks",
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 18),
         Expanded(
-          child: ElevatedButton.icon(
+          child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF64B5F6),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 22),
+              padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            icon: Icon(LucideIcons.droplets, size: 28),
-            label: const Text("Water Schedule"),
             onPressed: onWaterTap,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(LucideIcons.droplets, size: 22),
+                const SizedBox(width: 8),
+                const Flexible(
+                  child: Text(
+                    "Water Schedule",
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

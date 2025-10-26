@@ -1,7 +1,10 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/weather.dart';
 import '../services/weather_service.dart';
+import '../config/env.dart';
 import 'package:geolocator/geolocator.dart';
 
 class WeatherScreen extends StatefulWidget {
@@ -12,7 +15,8 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  final String _weatherApiKey = 'YOUR_OPENWEATHERMAP_API_KEY';
+  final String _weatherApiKey = Env.openWeatherApiKey;
+  bool get _demoMode => !Env.hasApiKey;
   double? _userLat;
   double? _userLon;
   bool _isLoading = true;
@@ -21,6 +25,15 @@ class _WeatherScreenState extends State<WeatherScreen> {
   void initState() {
     super.initState();
     _initializeLocation();
+    // Auto-use default location if needed
+    Future.delayed(const Duration(seconds: 3), () {
+      if (_userLat == null && _userLon == null) {
+        setState(() {
+          _userLat = -1.286389; // Default to Nairobi
+          _userLon = 36.817223;
+        });
+      }
+    });
   }
 
   Future<void> _initializeLocation() async {
@@ -101,6 +114,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
               : FutureBuilder<Weather>(
                 future: WeatherService(
                   _weatherApiKey,
+                  demoMode: _demoMode,
                 ).fetchCurrentWeather(_userLat!, _userLon!),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -227,6 +241,23 @@ class _WeatherScreenState extends State<WeatherScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_demoMode)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Card(
+                  color: const Color(0xFFFFF3E0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: Text(
+                      'Demo data shown. Set OPENWEATHER_API_KEY via --dart-define to enable live data.',
+                      style: TextStyle(color: Color(0xFFEF6C00)),
+                    ),
+                  ),
+                ),
+              ),
             // Hero Weather Card
             _buildHeroWeatherCard(weather),
             const SizedBox(height: 16),

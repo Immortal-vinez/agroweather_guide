@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/crop.dart';
@@ -43,7 +45,7 @@ class CropDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final seasonColor = _getSeasonColor(crop.season);
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -63,6 +65,9 @@ class CropDetailsScreen extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
+                    // ignore: duplicate_ignore
+                    // ignore: duplicate_ignore
+                    // ignore: deprecated_member_use
                     seasonColor.withOpacity(0.2),
                     const Color(0xFFF5F5F5),
                   ],
@@ -116,7 +121,11 @@ class CropDetailsScreen extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(_getSeasonIcon(crop.season), color: seasonColor, size: 18),
+                        Icon(
+                          _getSeasonIcon(crop.season),
+                          color: seasonColor,
+                          size: 18,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           '${crop.season} Season',
@@ -132,7 +141,7 @@ class CropDetailsScreen extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Details Section
             Padding(
               padding: const EdgeInsets.all(16),
@@ -231,7 +240,7 @@ class CropDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Care Tips Card
                   Card(
                     elevation: 2,
@@ -248,7 +257,9 @@ class CropDetailsScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                                  color: const Color(
+                                    0xFF4CAF50,
+                                  ).withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
@@ -292,7 +303,7 @@ class CropDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Season Info Card
                   Card(
                     elevation: 2,
@@ -338,11 +349,16 @@ class CropDetailsScreen extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                Icon(_getSeasonIcon(crop.season), color: seasonColor, size: 32),
+                                Icon(
+                                  _getSeasonIcon(crop.season),
+                                  color: seasonColor,
+                                  size: 32,
+                                ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         crop.season,

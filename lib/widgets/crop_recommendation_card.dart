@@ -39,24 +39,47 @@ class CropRecommendationCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Suitability: ',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                      Row(
+                        children: [
+                          Text(
+                            'Suitability: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          Text(
+                            '${(suitability * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        '${(suitability * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(fontSize: 13, color: Colors.blue),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Water Saving: ',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                      ),
-                      Text(
-                        '${waterSaving.toStringAsFixed(1)}%',
-                        style: TextStyle(fontSize: 13, color: Colors.teal),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            'Water Saving: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          Text(
+                            '${waterSaving.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.teal,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

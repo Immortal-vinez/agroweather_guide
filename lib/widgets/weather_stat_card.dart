@@ -28,14 +28,17 @@ class WeatherStatCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: color, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: color,
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -44,10 +47,11 @@ class WeatherStatCard extends StatelessWidget {
             Text(
               value,
               style: const TextStyle(
-                fontSize: 32,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF212121),
               ),
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 6),
             Text(
