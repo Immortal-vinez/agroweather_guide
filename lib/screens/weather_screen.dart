@@ -392,6 +392,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildWeatherDetailsGrid(Weather weather) {
+    const crossAxisCount = 2;
+    const spacing = 12.0;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -406,39 +408,49 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.5,
-            children: [
-              _buildWeatherDetailCard(
-                icon: LucideIcons.droplets,
-                label: 'Humidity',
-                value: '${weather.humidity}%',
-                color: Colors.blue,
-              ),
-              _buildWeatherDetailCard(
-                icon: LucideIcons.wind,
-                label: 'Wind Speed',
-                value: '${weather.windSpeed.toStringAsFixed(1)} m/s',
-                color: Colors.teal,
-              ),
-              _buildWeatherDetailCard(
-                icon: Icons.water_drop,
-                label: 'Rainfall',
-                value: '${weather.rainfall.toStringAsFixed(1)} mm',
-                color: Colors.indigo,
-              ),
-              _buildWeatherDetailCard(
-                icon: LucideIcons.gauge,
-                label: 'Pressure',
-                value: '${weather.pressure} hPa',
-                color: Colors.purple,
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tileWidth =
+                  (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                  crossAxisCount;
+              // Give each tile a comfortable fixed height to avoid vertical overflow
+              final tileHeight = 130.0;
+              final aspectRatio = tileWidth / tileHeight;
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
+                childAspectRatio: aspectRatio,
+                children: [
+                  _buildWeatherDetailCard(
+                    icon: LucideIcons.droplets,
+                    label: 'Humidity',
+                    value: '${weather.humidity}%',
+                    color: Colors.blue,
+                  ),
+                  _buildWeatherDetailCard(
+                    icon: LucideIcons.wind,
+                    label: 'Wind Speed',
+                    value: '${weather.windSpeed.toStringAsFixed(1)} m/s',
+                    color: Colors.teal,
+                  ),
+                  _buildWeatherDetailCard(
+                    icon: Icons.water_drop,
+                    label: 'Rainfall',
+                    value: '${weather.rainfall.toStringAsFixed(1)} mm',
+                    color: Colors.indigo,
+                  ),
+                  _buildWeatherDetailCard(
+                    icon: LucideIcons.gauge,
+                    label: 'Pressure',
+                    value: '${weather.pressure} hPa',
+                    color: Colors.purple,
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -455,37 +467,44 @@ class _WeatherScreenState extends State<WeatherScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
+        padding: const EdgeInsets.all(14),
+        child: ClipRect(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF212121),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF212121),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

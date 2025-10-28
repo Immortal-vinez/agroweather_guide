@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:agroweather_guide/models/weather.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../widgets/trust_signals_card.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../widgets/weather_stat_card.dart';
@@ -22,6 +21,10 @@ import 'settings_screen.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
 import '../widgets/offline_banner.dart';
+import 'crop_recommendation_screen.dart';
+import '../services/season_service.dart';
+import '../widgets/season_card.dart';
+import 'add_crop_plan_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -108,24 +111,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // Auto-use default location if location services fail
   Future<void> _autoUseDefaultLocation() async {
-    await Future.delayed(const Duration(seconds: 3)); // Wait 3 seconds
-    if (_userLat == null && _userLon == null) {
-      _useDefaultLocation();
+    // Auto-fallback to default location after a delay if location fetch fails
+    await Future.delayed(const Duration(seconds: 5));
+    if (_userLat == null || _userLon == null) {
+      await _useDefaultLocation();
     }
-  }
-
-  Future<void> _refreshData() async {
-    // Re-evaluate connectivity and location, then rebuild
-    final results = await Connectivity().checkConnectivity();
-    setState(() {
-      _isOffline = results.contains(ConnectivityResult.none);
-    });
-    if (!_isOffline && (_userLat == null || _userLon == null)) {
-      await _getUserLocation();
-    }
-    setState(() {});
   }
 
   @override
@@ -155,18 +146,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<List<Crop>> _loadRecommendedCrops(Weather weather) async {
     final String data = await rootBundle.loadString('lib/data/crops.json');
     final List<dynamic> jsonResult = json.decode(data);
-    // Define a simple mapping of month to season for rule-based filtering
-    final int month = DateTime.now().month;
-    String currentSeason;
-    if ([6, 7, 8, 9].contains(month)) {
-      currentSeason = 'Rainy';
-    } else if ([10, 11, 12, 1].contains(month)) {
-      currentSeason = 'Cool';
-    } else if ([2, 3, 4, 5].contains(month)) {
-      currentSeason = 'Warm';
-    } else {
-      currentSeason = 'Dry';
+    final seasonInfo = SeasonService().getSeasonInfo(DateTime.now());
+    final allowedTags = seasonInfo.datasetTags.toSet();
+
+    bool seasonMatches(String s) {
+      final norm = (s == 'Wet') ? 'Rainy' : s;
+      return allowedTags.contains(norm);
     }
+
     return jsonResult
         .map(
           (e) => Crop(
@@ -182,7 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           (crop) =>
               weather.temperature >= crop.minTemp &&
               weather.temperature <= crop.maxTemp &&
-              (crop.season == currentSeason || crop.season == 'Any'),
+              seasonMatches(crop.season),
         )
         .toList();
   }
@@ -390,6 +377,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   final List<Crop> _userAddedCrops = [];
+
+  void _refreshData() {
+    setState(() {
+      // Trigger a rebuild to refresh weather data and other content
+    });
+  }
 
   Widget _buildQuickActionTile({
     required IconData icon,
@@ -726,6 +719,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              // Zambia Season Card to inform recommendations
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Builder(
+                  builder: (_) {
+                    final seasonInfo = SeasonService().getSeasonInfo(
+                      DateTime.now(),
+                    );
+                    return SeasonCard(season: seasonInfo);
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 0),
                 child: FutureBuilder<List<Crop>>(
@@ -806,25 +812,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   },
                 ),
               ),
-              // Trust Signals Section
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: TrustSignalsCard(
-                  signals: [
-                    TrustSignal(label: 'Farmers Using', value: '10,000+'),
-                    TrustSignal(
-                      label: 'Verified Data',
-                      value: 'OpenWeatherMap',
-                    ),
-                    TrustSignal(label: 'FAO Standards', value: 'Compliant'),
-                    TrustSignal(label: 'Accuracy', value: '98%'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+              // Trust Signals section removed per request
+              const SizedBox(height: 8),
               // Quick Actions Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -849,6 +838,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
+                        _buildQuickActionTile(
+                          icon: LucideIcons.calendarDays,
+                          title: 'Plan',
+                          subtitle: 'Open your crop planning calendar',
+                          color: Colors.blue,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => CropRecommendationScreen(
+                                      currentWeather: weather,
+                                      startInPlan: true,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        const Divider(height: 24),
+                        _buildQuickActionTile(
+                          icon: LucideIcons.plus,
+                          title: 'Add Crop Plan',
+                          subtitle: 'Create a plan with schedule and reminders',
+                          color: Colors.indigo,
+                          onTap: () async {
+                            final String data = await rootBundle.loadString(
+                              'lib/data/crops.json',
+                            );
+                            final List<dynamic> jsonResult = json.decode(data);
+                            final crops =
+                                jsonResult
+                                    .map(
+                                      (e) => Crop(
+                                        name: e['name'],
+                                        season: e['season'],
+                                        careTip: e['careTip'],
+                                        minTemp:
+                                            (e['minTemp'] as num).toDouble(),
+                                        maxTemp:
+                                            (e['maxTemp'] as num).toDouble(),
+                                        icon: e['icon'],
+                                      ),
+                                    )
+                                    .toList();
+                            await Navigator.push(
+                              // ignore: use_build_context_synchronously
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => AddCropPlanScreen(
+                                      knownCrops: crops,
+                                      currentWeather: weather,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        const Divider(height: 24),
                         _buildQuickActionTile(
                           icon: LucideIcons.stickyNote,
                           title: 'Add Note',

@@ -6,4 +6,10 @@ class Env {
   );
 
   static bool get hasApiKey => openWeatherApiKey.isNotEmpty;
+
+  // Optional remote crops JSON URL. If provided, we'll fetch crops remotely and cache.
+  // Example: flutter run --dart-define=CROPS_DATA_URL=https://example.com/crops.json
+  static const String cropsDataUrl = String.fromEnvironment('CROPS_DATA_URL');
+
+  static bool get hasCropsUrl => cropsDataUrl.isNotEmpty;
 }

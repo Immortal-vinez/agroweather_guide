@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/crop.dart';
 import '../models/weather.dart';
 import 'crop_details_screen.dart';
+import '../services/crops_service.dart';
+import 'add_crop_plan_screen.dart';
 
 class CropsListScreen extends StatefulWidget {
   final Weather? currentWeather;
@@ -32,24 +32,10 @@ class _CropsListScreenState extends State<CropsListScreen> {
 
   Future<void> _loadCrops() async {
     try {
-      final String data = await rootBundle.loadString('lib/data/crops.json');
-      final List<dynamic> jsonResult = json.decode(data);
-
+      final crops = await CropsService().loadCrops();
       setState(() {
-        _allCrops =
-            jsonResult
-                .map(
-                  (e) => Crop(
-                    name: e['name'],
-                    season: e['season'],
-                    careTip: e['careTip'],
-                    minTemp: (e['minTemp'] as num).toDouble(),
-                    maxTemp: (e['maxTemp'] as num).toDouble(),
-                    icon: e['icon'],
-                  ),
-                )
-                .toList();
-        _filteredCrops = _allCrops;
+        _allCrops = crops;
+        _filteredCrops = crops;
         _isLoading = false;
       });
     } catch (e) {
@@ -70,6 +56,27 @@ class _CropsListScreenState extends State<CropsListScreen> {
                 _selectedSeason == 'All' || crop.season == _selectedSeason;
             return matchesSearch && matchesSeason;
           }).toList();
+
+      // Weather-aware sorting if weather data is available
+      if (widget.currentWeather != null) {
+        final temp = widget.currentWeather!.temperature;
+        final currentSeason = _getCurrentSeason();
+        double score(Crop c) {
+          final ideal = (c.minTemp + c.maxTemp) / 2.0;
+          final diff = (temp - ideal).abs(); // lower is better
+          final seasonBonus =
+              (c.season == currentSeason || c.season == 'Any')
+                  ? -0.25 // nudge matching seasons up
+                  : 0.0;
+          final inRangePenalty =
+              (temp < c.minTemp || temp > c.maxTemp)
+                  ? 1.0
+                  : 0.0; // out of range, push down
+          return diff + inRangePenalty + seasonBonus;
+        }
+
+        _filteredCrops.sort((a, b) => score(a).compareTo(score(b)));
+      }
     });
   }
 
@@ -531,6 +538,42 @@ class _CropsListScreenState extends State<CropsListScreen> {
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final planned = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => AddCropPlanScreen(
+                                    knownCrops: _allCrops,
+                                    currentWeather: widget.currentWeather,
+                                    initialCropName: crop.name,
+                                  ),
+                            ),
+                          );
+                          if (!mounted) return;
+                          if (planned != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Plan saved for ${crop.name}'),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(LucideIcons.calendarPlus),
+                        label: const Text('Plan'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
                     ),
                   ],
                 ),

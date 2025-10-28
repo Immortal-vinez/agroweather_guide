@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
+import 'services/notification_service.dart';
+import 'services/reminder_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.initialize();
+  // Start background-ish reminder checks (in-app periodic)
+  ReminderService().start();
   runApp(const MyApp());
 }
 
