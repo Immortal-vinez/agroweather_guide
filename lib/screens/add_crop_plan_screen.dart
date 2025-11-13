@@ -1,3 +1,4 @@
+import '../widgets/gradient_app_bar.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -180,7 +181,7 @@ class _AddCropPlanScreenState extends State<AddCropPlanScreen> {
     final suggestions = widget.knownCrops.map((c) => c.name).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Crop Plan')),
+      appBar: const GradientAppBar(title: Text('Add Crop Plan')),
       body: Form(
         key: _formKey,
         child: ListView(

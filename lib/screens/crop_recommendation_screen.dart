@@ -1,3 +1,4 @@
+import '../widgets/gradient_app_bar.dart';
 // ignore_for_file: deprecated_member_use, duplicate_ignore
 
 import 'dart:convert';
@@ -12,6 +13,7 @@ import '../models/planned_crop.dart';
 import '../models/plan_task.dart';
 import '../services/plan_repository.dart';
 import 'add_crop_plan_screen.dart';
+import '../services/season_service.dart';
 
 enum _CropViewMode { recommendations, calendar }
 
@@ -37,6 +39,7 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
   List<Crop> _allCrops = [];
   bool _isLoading = true;
   List<PlannedCrop> _planned = [];
+  bool _rainyOnly = false;
 
   // Calendar state
   DateTime _visibleMonth = DateTime(DateTime.now().year, DateTime.now().month);
@@ -63,19 +66,18 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
     try {
       final data = await rootBundle.loadString('lib/data/crops.json');
       final List<dynamic> jsonResult = json.decode(data);
-      final crops =
-          jsonResult
-              .map(
-                (e) => Crop(
-                  name: e['name'],
-                  season: e['season'],
-                  careTip: e['careTip'],
-                  minTemp: (e['minTemp'] as num).toDouble(),
-                  maxTemp: (e['maxTemp'] as num).toDouble(),
-                  icon: e['icon'],
-                ),
-              )
-              .toList();
+      final crops = jsonResult
+          .map(
+            (e) => Crop(
+              name: e['name'],
+              season: e['season'],
+              careTip: e['careTip'],
+              minTemp: (e['minTemp'] as num).toDouble(),
+              maxTemp: (e['maxTemp'] as num).toDouble(),
+              icon: e['icon'],
+            ),
+          )
+          .toList();
       setState(() {
         _allCrops = crops;
         _isLoading = false;
@@ -100,10 +102,7 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF4CAF50),
-        foregroundColor: Colors.white,
-        elevation: 0,
+      appBar: GradientAppBar(
         title: Row(
           children: [
             Icon(LucideIcons.sprout, size: 22),
@@ -122,10 +121,9 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                     label: 'Recommendations',
                     icon: LucideIcons.listChecks,
                     selected: _mode == _CropViewMode.recommendations,
-                    onTap:
-                        () => setState(
-                          () => _mode = _CropViewMode.recommendations,
-                        ),
+                    onTap: () => setState(
+                      () => _mode = _CropViewMode.recommendations,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -142,48 +140,46 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
           ),
         ),
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : GestureDetector(
-                onTap: () => _searchFocus.unfocus(),
-                child:
-                    _mode == _CropViewMode.recommendations
-                        ? _buildRecommendations(theme)
-                        : _buildCalendar(theme),
-              ),
-      floatingActionButton:
-          _mode == _CropViewMode.calendar
-              ? FloatingActionButton.extended(
-                onPressed: () async {
-                  final crop = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => AddCropPlanScreen(
-                            knownCrops: _allCrops,
-                            currentWeather: widget.currentWeather,
-                          ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : GestureDetector(
+              onTap: () => _searchFocus.unfocus(),
+              child: _mode == _CropViewMode.recommendations
+                  ? _buildRecommendations(theme)
+                  : _buildCalendar(theme),
+            ),
+      floatingActionButton: _mode == _CropViewMode.calendar
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                final crop = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddCropPlanScreen(
+                      knownCrops: _allCrops,
+                      currentWeather: widget.currentWeather,
                     ),
-                  );
-                  if (crop != null) {
-                    await _loadPlans();
-                  }
-                },
-                icon: const Icon(LucideIcons.plus),
-                label: const Text('Add Plan'),
-              )
-              : null,
+                  ),
+                );
+                if (crop != null) {
+                  await _loadPlans();
+                }
+              },
+              icon: const Icon(LucideIcons.plus),
+              label: const Text('Add Plan'),
+            )
+          : null,
     );
   }
 
   Widget _buildRecommendations(ThemeData theme) {
     final query = _searchCtrl.text.trim().toLowerCase();
-    final filtered =
-        _allCrops.where((c) {
-          final q = c.name.toLowerCase();
-          return query.isEmpty || q.contains(query);
-        }).toList();
+    final filtered = _allCrops.where((c) {
+      final q = c.name.toLowerCase();
+      return query.isEmpty || q.contains(query);
+    }).toList();
+
+    final seasonInfo = SeasonService().getSeasonInfo(DateTime.now());
+    final isRainyNow = seasonInfo.name == 'Rainy';
 
     // Compute suitability if we have current weather
     final weather = widget.currentWeather;
@@ -228,6 +224,22 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
             ),
           ),
         ),
+        if (isRainyNow)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _rainyOnly = !_rainyOnly),
+                  icon: const Icon(LucideIcons.cloudRain),
+                  label: Text(
+                    _rainyOnly ? 'Show All Crops' : 'Show Rainy Season Crops',
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (weather != null)
           SliverToBoxAdapter(
             child: Padding(
@@ -275,7 +287,7 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
         else
           SliverList.separated(
             itemCount: display.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, i) {
               final crop = display[i];
 
@@ -286,6 +298,11 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
               if (weather != null) {
                 final tempMid = (crop.minTemp + crop.maxTemp) / 2.0;
                 final tempDiff = (weather.temperature - tempMid).abs();
+                if (isRainyNow && _rainyOnly) {
+                  display = display
+                      .where((c) => c.season == 'Rainy' || c.season == 'Any')
+                      .toList();
+                }
                 final tempRange = (crop.maxTemp - crop.minTemp) / 2.0;
                 suitability = (1.0 - (tempDiff / (tempRange + 0.1))).clamp(
                   0.0,
@@ -293,8 +310,7 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                 );
 
                 final cropWaterNeed = crop.minTemp * 1.5; // proxy
-                waterSaving =
-                    (weather.rainfall /
+                waterSaving = (weather.rainfall /
                         (cropWaterNeed == 0 ? 1 : cropWaterNeed)) *
                     100.0;
                 waterSaving = waterSaving.clamp(0.0, 100.0);
@@ -350,13 +366,12 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
             child: Row(
               children: [
                 IconButton(
-                  onPressed:
-                      () => setState(() {
-                        _visibleMonth = DateTime(
-                          _visibleMonth.year,
-                          _visibleMonth.month - 1,
-                        );
-                      }),
+                  onPressed: () => setState(() {
+                    _visibleMonth = DateTime(
+                      _visibleMonth.year,
+                      _visibleMonth.month - 1,
+                    );
+                  }),
                   icon: const Icon(LucideIcons.chevronLeft),
                 ),
                 Expanded(
@@ -371,13 +386,12 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                   ),
                 ),
                 IconButton(
-                  onPressed:
-                      () => setState(() {
-                        _visibleMonth = DateTime(
-                          _visibleMonth.year,
-                          _visibleMonth.month + 1,
-                        );
-                      }),
+                  onPressed: () => setState(() {
+                    _visibleMonth = DateTime(
+                      _visibleMonth.year,
+                      _visibleMonth.month + 1,
+                    );
+                  }),
                   icon: const Icon(LucideIcons.chevronRight),
                 ),
               ],
@@ -421,8 +435,7 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                 _visibleMonth.month,
                 day,
               );
-              final isToday =
-                  date.year == today.year &&
+              final isToday = date.year == today.year &&
                   date.month == today.month &&
                   date.day == today.day;
               final tasks = tasksByDate[day] ?? const [];
@@ -436,10 +449,9 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color:
-                          isToday
-                              ? const Color(0xFF4CAF50)
-                              : Colors.grey.shade300,
+                      color: isToday
+                          ? const Color(0xFF4CAF50)
+                          : Colors.grey.shade300,
                       width: isToday ? 2 : 1,
                     ),
                   ),
@@ -451,10 +463,9 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                         '$day',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color:
-                              isToday
-                                  ? const Color(0xFF2E7D32)
-                                  : const Color(0xFF212121),
+                          color: isToday
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFF212121),
                         ),
                       ),
                       // Use Expanded+Align to avoid minute overflow due to pixel rounding
@@ -466,15 +477,14 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                             child: Wrap(
                               spacing: 3,
                               runSpacing: 1,
-                              children:
-                                  tasks
-                                      .take(3)
-                                      .map(
-                                        (pair) => _Dot(
-                                          color: _taskColor(pair.task.type),
-                                        ),
-                                      )
-                                      .toList(),
+                              children: tasks
+                                  .take(3)
+                                  .map(
+                                    (pair) => _Dot(
+                                      color: _taskColor(pair.task.type),
+                                    ),
+                                  )
+                                  .toList(),
                             ),
                           ),
                         ),
@@ -516,18 +526,17 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: tasks.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 4),
+                    separatorBuilder: (_, __) => const SizedBox(height: 4),
                     itemBuilder: (_, index) {
                       final pair = tasks[index];
                       final crop = pair.crop;
                       final t = pair.task;
-                      final textStyle =
-                          t.completed
-                              ? const TextStyle(
-                                decoration: TextDecoration.lineThrough,
-                                color: Colors.grey,
-                              )
-                              : null;
+                      final textStyle = t.completed
+                          ? const TextStyle(
+                              decoration: TextDecoration.lineThrough,
+                              color: Colors.grey,
+                            )
+                          : null;
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
@@ -609,25 +618,22 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
                               Navigator.pop(context);
                             }
                           },
-                          itemBuilder:
-                              (ctx) => [
-                                PopupMenuItem(
-                                  value: 'toggle',
-                                  child: Text(
-                                    t.completed
-                                        ? 'Mark as Undone'
-                                        : 'Mark as Done',
-                                  ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'reschedule',
-                                  child: Text('Reschedule'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete'),
-                                ),
-                              ],
+                          itemBuilder: (ctx) => [
+                            PopupMenuItem(
+                              value: 'toggle',
+                              child: Text(
+                                t.completed ? 'Mark as Undone' : 'Mark as Done',
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'reschedule',
+                              child: Text('Reschedule'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -679,19 +685,18 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
             width: double.maxFinite,
             child: ListView(
               shrinkWrap: true,
-              children:
-                  _planned
-                      .map(
-                        (c) => ListTile(
-                          leading: Text(
-                            c.icon,
-                            style: const TextStyle(fontSize: 18),
-                          ),
-                          title: Text(c.name),
-                          onTap: () => Navigator.pop(context, c),
-                        ),
-                      )
-                      .toList(),
+              children: _planned
+                  .map(
+                    (c) => ListTile(
+                      leading: Text(
+                        c.icon,
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                      title: Text(c.name),
+                      onTap: () => Navigator.pop(context, c),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
         );
@@ -705,47 +710,44 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
     TaskType selected = TaskType.other;
     final ok = await showDialog<bool>(
       context: context,
-      builder:
-          (_) => AlertDialog(
-            title: const Text('New task'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<TaskType>(
-                  value: selected,
-                  items:
-                      TaskType.values
-                          .map(
-                            (t) =>
-                                DropdownMenuItem(value: t, child: Text(t.name)),
-                          )
-                          .toList(),
-                  onChanged: (v) {
-                    selected = v ?? TaskType.other;
-                  },
-                  decoration: const InputDecoration(labelText: 'Type'),
-                ),
-                TextField(
-                  controller: titleCtrl,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                ),
-                TextField(
-                  controller: descCtrl,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-              ],
+      builder: (_) => AlertDialog(
+        title: const Text('New task'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<TaskType>(
+              value: selected,
+              items: TaskType.values
+                  .map(
+                    (t) => DropdownMenuItem(value: t, child: Text(t.name)),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                selected = v ?? TaskType.other;
+              },
+              decoration: const InputDecoration(labelText: 'Type'),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Add'),
-              ),
-            ],
+            TextField(
+              controller: titleCtrl,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            TextField(
+              controller: descCtrl,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
     );
     if (ok != true) return null;
     return PlanTask(

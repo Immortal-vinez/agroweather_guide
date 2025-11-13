@@ -12,4 +12,11 @@ class Env {
   static const String cropsDataUrl = String.fromEnvironment('CROPS_DATA_URL');
 
   static bool get hasCropsUrl => cropsDataUrl.isNotEmpty;
+
+  // Optional seasonal forecast API base URL (if using a proxy/server).
+  // If not set, the app will use Open-Meteo Seasonal API by default.
+  static String? get seasonalApiUrl {
+    const v = String.fromEnvironment('SEASONAL_API_URL');
+    return v.isEmpty ? null : v;
+  }
 }

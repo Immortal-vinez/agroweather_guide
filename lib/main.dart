@@ -20,30 +20,31 @@ class MyApp extends StatelessWidget {
       title: 'AgroWeather Guide',
       theme: ThemeData(
         fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFFF5F5E6), // Soft Beige
-        colorScheme: ColorScheme(
+        scaffoldBackgroundColor: const Color(0xFFE3F2FD), // Light Blue 50
+        colorScheme: const ColorScheme(
           brightness: Brightness.light,
-          primary: Color(0xFF4CAF50), // Leaf Green
+          primary: Color(0xFF64B5F6), // Blue 300
           onPrimary: Colors.white,
-          secondary: Color(0xFF81D4FA), // Sky Blue
+          secondary: Color(0xFF90CAF9), // Blue 200
           onSecondary: Colors.black,
-          error: Color(0xFFFFEB3B), // Sunshine Yellow (for alerts)
-          onError: Colors.black, // Charcoal
+          error: Color(0xFFFF5252),
+          onError: Colors.white,
           surface: Colors.white,
-          onSurface: Color(0xFF333333), // Charcoal
+          onSurface: Color(0xFF203040),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF4CAF50), // Leaf Green
+          backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
+          elevation: 0,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF4CAF50), // Leaf Green
+          backgroundColor: Color(0xFF64B5F6),
           foregroundColor: Colors.white,
         ),
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFF333333)), // Charcoal
-          bodyMedium: TextStyle(color: Color(0xFF333333)),
-          titleLarge: TextStyle(color: Color(0xFF333333)),
+          bodyLarge: TextStyle(color: Color(0xFF203040)),
+          bodyMedium: TextStyle(color: Color(0xFF203040)),
+          titleLarge: TextStyle(color: Color(0xFF203040)),
         ),
       ),
       home: const DashboardScreen(),

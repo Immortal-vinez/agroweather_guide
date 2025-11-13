@@ -1,3 +1,4 @@
+import '../widgets/gradient_app_bar.dart';
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,8 @@ import '../models/weather.dart';
 import '../services/weather_service.dart';
 import '../config/env.dart';
 import 'package:geolocator/geolocator.dart';
+import '../services/forecast_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -20,6 +23,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
   double? _userLat;
   double? _userLon;
   bool _isLoading = true;
+  // 3-hourly forecast state
+  List<ThreeHourForecast> _hourly3h = [];
+  bool _hourlyLoading = false;
+  DateTime? _hourlyLastUpdated;
+  bool _useCelsius = true;
 
   @override
   void initState() {
@@ -41,6 +49,22 @@ class _WeatherScreenState extends State<WeatherScreen> {
     setState(() {
       _isLoading = false;
     });
+    // Load hourly forecast after we have coordinates
+    if (_userLat != null && _userLon != null) {
+      _loadHourly3h();
+    }
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cel = prefs.getBool('settings_use_celsius');
+      if (!mounted) return;
+      setState(() {
+        _useCelsius = cel ?? true;
+      });
+    } catch (_) {}
   }
 
   Future<void> _getUserLocation() async {
@@ -78,13 +102,36 @@ class _WeatherScreenState extends State<WeatherScreen> {
     setState(() {
       _isLoading = false;
     });
+    if (_userLat != null && _userLon != null) {
+      _loadHourly3h(manual: true);
+    }
+  }
+
+  Future<void> _loadHourly3h({bool manual = false}) async {
+    if (_demoMode || _userLat == null || _userLon == null) {
+      setState(() {
+        _hourly3h = [];
+        _hourlyLastUpdated = DateTime.now();
+      });
+      return;
+    }
+    setState(() => _hourlyLoading = true);
+    final svc = ForecastService(_weatherApiKey);
+    final data = await svc.fetch3HourlyForecast(
+        lat: _userLat!, lon: _userLon!, limit: 16);
+    if (!mounted) return;
+    setState(() {
+      _hourly3h = data;
+      _hourlyLoading = false;
+      _hourlyLastUpdated = DateTime.now();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
+      appBar: GradientAppBar(
         title: Row(
           children: [
             Icon(LucideIcons.cloudSun, size: 24),
@@ -95,9 +142,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF4CAF50),
-        foregroundColor: Colors.white,
-        elevation: 0,
         actions: [
           IconButton(
             icon: Icon(LucideIcons.refreshCw),
@@ -106,29 +150,28 @@ class _WeatherScreenState extends State<WeatherScreen> {
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _userLat == null || _userLon == null
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _userLat == null || _userLon == null
               ? _buildLocationError()
               : FutureBuilder<Weather>(
-                future: WeatherService(
-                  _weatherApiKey,
-                  demoMode: _demoMode,
-                ).fetchCurrentWeather(_userLat!, _userLon!),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return _buildErrorState();
-                  }
-                  if (!snapshot.hasData) {
-                    return _buildNoDataState();
-                  }
-                  return _buildWeatherContent(snapshot.data!);
-                },
-              ),
+                  future: WeatherService(
+                    _weatherApiKey,
+                    demoMode: _demoMode,
+                  ).fetchCurrentWeather(_userLat!, _userLon!),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return _buildErrorState();
+                    }
+                    if (!snapshot.hasData) {
+                      return _buildNoDataState();
+                    }
+                    return _buildWeatherContent(snapshot.data!);
+                  },
+                ),
     );
   }
 
@@ -339,7 +382,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             const SizedBox(height: 16),
             // Temperature
             Text(
-              '${weather.temperature.toStringAsFixed(1)}°C',
+              '${_fmtTemp(weather.temperature).toStringAsFixed(1)}°$_unit',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 64,
@@ -359,7 +402,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Feels like ${weather.temperature.toStringAsFixed(0)}°C',
+              'Feels like ${_fmtTemp(weather.temperature).toStringAsFixed(0)}°$_unit',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.8),
                 fontSize: 14,
@@ -412,7 +455,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             builder: (context, constraints) {
               final tileWidth =
                   (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
-                  crossAxisCount;
+                      crossAxisCount;
               // Give each tile a comfortable fixed height to avoid vertical overflow
               final tileHeight = 130.0;
               final aspectRatio = tileWidth / tileHeight;
@@ -662,51 +705,135 @@ class _WeatherScreenState extends State<WeatherScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Hourly Forecast',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Hourly Forecast (3-hour steps)',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E7D32),
+                ),
+              ),
+              Row(
                 children: [
-                  Icon(
-                    LucideIcons.clock,
-                    size: 40,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Hourly forecast coming soon',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
+                  if (_hourlyLastUpdated != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        'Updated ${_formatTime(_hourlyLastUpdated!)}',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade600),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Get hour-by-hour weather updates',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  IconButton(
+                    icon: _hourlyLoading
+                        ? SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(LucideIcons.refreshCw),
+                    tooltip: 'Refresh hourly',
+                    onPressed: _hourlyLoading
+                        ? null
+                        : () => _loadHourly3h(manual: true),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
+          const SizedBox(height: 12),
+          if (_hourlyLoading)
+            Center(
+                child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: CircularProgressIndicator()))
+          else if (_hourly3h.isEmpty)
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey.shade500),
+                    const SizedBox(width: 8),
+                    Text('No hourly forecast available',
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 110,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                itemCount: _hourly3h.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final h = _hourly3h[i];
+                  return Container(
+                    width: 84,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE3F2FD),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatHour(h.time),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                        Icon(
+                          _getWeatherIcon(h.condition),
+                          color: const Color(0xFF64B5F6),
+                        ),
+                        Text(
+                          '${_fmtTemp(h.temp).toStringAsFixed(0)}°$_unit',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(LucideIcons.umbrella,
+                                size: 12, color: Colors.blueGrey.shade600),
+                            const SizedBox(width: 4),
+                            Text('${(h.pop * 100).round()}%',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.blueGrey.shade700)),
+                          ],
+                        )
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
   }
+
+  String _formatHour(DateTime dt) => '${dt.hour.toString().padLeft(2, '0')}:00';
+  String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  double _fmtTemp(double c) => _useCelsius ? c : (c * 9 / 5) + 32;
+  String get _unit => _useCelsius ? 'C' : 'F';
 
   Widget _buildAdditionalInfo(Weather weather) {
     final sunrise = DateTime.now().copyWith(hour: 6, minute: 30);

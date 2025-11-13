@@ -1,3 +1,5 @@
+import '../widgets/gradient_app_bar.dart';
+import '../services/season_service.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/crop.dart';
@@ -8,8 +10,10 @@ import 'add_crop_plan_screen.dart';
 
 class CropsListScreen extends StatefulWidget {
   final Weather? currentWeather;
+  final String? initialSeasonFilter; // e.g., 'Rainy'
 
-  const CropsListScreen({super.key, this.currentWeather});
+  const CropsListScreen(
+      {super.key, this.currentWeather, this.initialSeasonFilter});
 
   @override
   State<CropsListScreen> createState() => _CropsListScreenState();
@@ -27,6 +31,9 @@ class _CropsListScreenState extends State<CropsListScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialSeasonFilter != null) {
+      _selectedSeason = widget.initialSeasonFilter!;
+    }
     _loadCrops();
   }
 
@@ -38,6 +45,7 @@ class _CropsListScreenState extends State<CropsListScreen> {
         _filteredCrops = crops;
         _isLoading = false;
       });
+      _filterCrops();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -47,15 +55,15 @@ class _CropsListScreenState extends State<CropsListScreen> {
 
   void _filterCrops() {
     setState(() {
-      _filteredCrops =
-          _allCrops.where((crop) {
-            final matchesSearch = crop.name.toLowerCase().contains(
+      _filteredCrops = _allCrops.where((crop) {
+        final matchesSearch = crop.name.toLowerCase().contains(
               _searchQuery.toLowerCase(),
             );
-            final matchesSeason =
-                _selectedSeason == 'All' || crop.season == _selectedSeason;
-            return matchesSearch && matchesSeason;
-          }).toList();
+        final matchesSeason = _selectedSeason == 'All'
+            ? true
+            : (crop.season == _selectedSeason || crop.season == 'Any');
+        return matchesSearch && matchesSeason;
+      }).toList();
 
       // Weather-aware sorting if weather data is available
       if (widget.currentWeather != null) {
@@ -64,14 +72,12 @@ class _CropsListScreenState extends State<CropsListScreen> {
         double score(Crop c) {
           final ideal = (c.minTemp + c.maxTemp) / 2.0;
           final diff = (temp - ideal).abs(); // lower is better
-          final seasonBonus =
-              (c.season == currentSeason || c.season == 'Any')
-                  ? -0.25 // nudge matching seasons up
-                  : 0.0;
-          final inRangePenalty =
-              (temp < c.minTemp || temp > c.maxTemp)
-                  ? 1.0
-                  : 0.0; // out of range, push down
+          final seasonBonus = (c.season == currentSeason || c.season == 'Any')
+              ? -0.25 // nudge matching seasons up
+              : 0.0;
+          final inRangePenalty = (temp < c.minTemp || temp > c.maxTemp)
+              ? 1.0
+              : 0.0; // out of range, push down
           return diff + inRangePenalty + seasonBonus;
         }
 
@@ -134,11 +140,14 @@ class _CropsListScreenState extends State<CropsListScreen> {
   @override
   Widget build(BuildContext context) {
     final currentSeason = _getCurrentSeason();
+    final seasonInfo = SeasonService().getSeasonInfo(DateTime.now());
+    final isRainyNow = seasonInfo.name == 'Rainy';
+    final rainyActive = _selectedSeason == 'Rainy';
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
+      appBar: GradientAppBar(
         title: Row(
           children: [
             Icon(LucideIcons.sprout, size: 24),
@@ -149,202 +158,208 @@ class _CropsListScreenState extends State<CropsListScreen> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF4CAF50),
-        foregroundColor: Colors.white,
-        elevation: 0,
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : CustomScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                slivers: [
-                  // Search and Filter Section
-                  SliverToBoxAdapter(
-                    child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          // Search Bar
-                          TextField(
-                            onChanged: (value) {
-                              setState(() {
-                                _searchQuery = value;
-                              });
-                              _filterCrops();
-                            },
-                            decoration: InputDecoration(
-                              hintText: 'Search crops...',
-                              prefixIcon: Icon(
-                                LucideIcons.search,
-                                color: Colors.grey.shade600,
-                              ),
-                              suffixIcon:
-                                  _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                        icon: Icon(LucideIcons.x, size: 20),
-                                        onPressed: () {
-                                          setState(() {
-                                            _searchQuery = '';
-                                          });
-                                          _filterCrops();
-                                        },
-                                      )
-                                      : null,
-                              filled: true,
-                              fillColor: Colors.grey.shade100,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : CustomScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              slivers: [
+                // Search and Filter Section
+                SliverToBoxAdapter(
+                  child: Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        // Search Bar
+                        TextField(
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                            _filterCrops();
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search crops...',
+                            prefixIcon: Icon(
+                              LucideIcons.search,
+                              color: Colors.grey.shade600,
+                            ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(LucideIcons.x, size: 20),
+                                    onPressed: () {
+                                      setState(() {
+                                        _searchQuery = '';
+                                      });
+                                      _filterCrops();
+                                    },
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          // Season Filter Chips
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children:
-                                  _seasons.map((season) {
-                                    final isSelected =
-                                        _selectedSeason == season;
-                                    final isCurrent = season == currentSeason;
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: FilterChip(
-                                        label: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            if (season != 'All')
-                                              Icon(
-                                                _getSeasonIcon(season),
-                                                size: 16,
-                                                color:
-                                                    isSelected
-                                                        ? Colors.white
-                                                        : _getSeasonColor(
-                                                          season,
-                                                        ),
-                                              ),
-                                            if (season != 'All')
-                                              const SizedBox(width: 4),
-                                            Text(season),
-                                            if (isCurrent) ...[
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                Icons.star,
-                                                size: 12,
-                                                color:
-                                                    isSelected
-                                                        ? Colors.white
-                                                        : Colors.amber,
-                                              ),
-                                            ],
-                                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Season Filter Chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _seasons.map((season) {
+                              final isSelected = _selectedSeason == season;
+                              final isCurrent = season == currentSeason;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: FilterChip(
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (season != 'All')
+                                        Icon(
+                                          _getSeasonIcon(season),
+                                          size: 16,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : _getSeasonColor(
+                                                  season,
+                                                ),
                                         ),
-                                        selected: isSelected,
-                                        onSelected: (selected) {
-                                          setState(() {
-                                            _selectedSeason = season;
-                                          });
-                                          _filterCrops();
-                                        },
-                                        backgroundColor: Colors.white,
-                                        selectedColor: _getSeasonColor(season),
-                                        checkmarkColor: Colors.white,
-                                        labelStyle: TextStyle(
-                                          color:
-                                              isSelected
-                                                  ? Colors.white
-                                                  : Colors.black87,
-                                          fontWeight:
-                                              isSelected
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
+                                      if (season != 'All')
+                                        const SizedBox(width: 4),
+                                      Text(season),
+                                      if (isCurrent) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.star,
+                                          size: 12,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.amber,
                                         ),
-                                        side: BorderSide(
-                                          color:
-                                              isSelected
-                                                  ? _getSeasonColor(season)
-                                                  : Colors.grey.shade300,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Results Count
-                  SliverToBoxAdapter(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      color: Colors.grey.shade100,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${_filteredCrops.length} crop${_filteredCrops.length != 1 ? 's' : ''} found',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (widget.currentWeather != null)
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.thermostat,
-                                  size: 16,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${widget.currentWeather!.temperature.toStringAsFixed(0)}°C',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade600,
+                                      ],
+                                    ],
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      _selectedSeason = season;
+                                    });
+                                    _filterCrops();
+                                  },
+                                  backgroundColor: Colors.white,
+                                  selectedColor: _getSeasonColor(season),
+                                  checkmarkColor: Colors.white,
+                                  labelStyle: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? _getSeasonColor(season)
+                                        : Colors.grey.shade300,
                                   ),
                                 ),
-                              ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        if (isRainyNow) ...[
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedSeason =
+                                      rainyActive ? 'All' : 'Rainy';
+                                });
+                                _filterCrops();
+                              },
+                              icon: const Icon(LucideIcons.cloudRain),
+                              label: Text(rainyActive
+                                  ? 'Show All Crops'
+                                  : 'Show Rainy Season Crops'),
                             ),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
+                ),
 
-                  // Crops List / Empty state
-                  if (_filteredCrops.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _buildEmptyStateContent(),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.all(16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final crop = _filteredCrops[index];
-                          final isSuitable = _isSuitableForCurrentWeather(crop);
-                          return _buildCropCard(crop, isSuitable);
-                        }, childCount: _filteredCrops.length),
-                      ),
+                // Results Count
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                ],
-              ),
+                    color: Colors.grey.shade100,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${_filteredCrops.length} crop${_filteredCrops.length != 1 ? 's' : ''} found',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (widget.currentWeather != null)
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.thermostat,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${widget.currentWeather!.temperature.toStringAsFixed(0)}°C',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Crops List / Empty state
+                if (_filteredCrops.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _buildEmptyStateContent(),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final crop = _filteredCrops[index];
+                        final isSuitable = _isSuitableForCurrentWeather(crop);
+                        return _buildCropCard(crop, isSuitable);
+                      }, childCount: _filteredCrops.length),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 
@@ -412,10 +427,9 @@ class _CropsListScreenState extends State<CropsListScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side:
-            isSuitable
-                ? BorderSide(color: const Color(0xFF4CAF50), width: 2)
-                : BorderSide.none,
+        side: isSuitable
+            ? BorderSide(color: const Color(0xFF4CAF50), width: 2)
+            : BorderSide.none,
       ),
       child: InkWell(
         onTap: () {
@@ -547,12 +561,11 @@ class _CropsListScreenState extends State<CropsListScreen> {
                           final planned = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder:
-                                  (_) => AddCropPlanScreen(
-                                    knownCrops: _allCrops,
-                                    currentWeather: widget.currentWeather,
-                                    initialCropName: crop.name,
-                                  ),
+                              builder: (_) => AddCropPlanScreen(
+                                knownCrops: _allCrops,
+                                currentWeather: widget.currentWeather,
+                                initialCropName: crop.name,
+                              ),
                             ),
                           );
                           if (!mounted) return;

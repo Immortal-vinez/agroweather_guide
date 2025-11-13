@@ -7,11 +7,13 @@ class DashboardHeader extends StatelessWidget {
   final String location;
   final String lastUpdate;
   final VoidCallback? onRefresh;
+  final VoidCallback? onLocationTap;
 
   const DashboardHeader({
     required this.location,
     required this.lastUpdate,
     this.onRefresh,
+    this.onLocationTap,
     super.key,
   });
 
@@ -46,37 +48,53 @@ class DashboardHeader extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              location,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF212121),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  LucideIcons.clock,
-                                  color: Colors.grey.shade600,
-                                  size: 12,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Updated $lastUpdate',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
+                        child: InkWell(
+                          onTap: onLocationTap,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      location,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF212121),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  if (onLocationTap != null)
+                                    Icon(
+                                      LucideIcons.chevronDown,
+                                      size: 16,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    LucideIcons.clock,
+                                    color: Colors.grey.shade600,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Updated $lastUpdate',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
