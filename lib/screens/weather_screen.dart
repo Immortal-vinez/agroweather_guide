@@ -706,35 +706,41 @@ class _WeatherScreenState extends State<WeatherScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Hourly Forecast (3-hour steps)',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E7D32),
+              Flexible(
+                child: Text(
+                  'Hourly Forecast (3-hour)',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E7D32),
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_hourlyLastUpdated != null)
                     Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.only(right: 4),
                       child: Text(
                         'Updated ${_formatTime(_hourlyLastUpdated!)}',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600),
+                            fontSize: 10, color: Colors.grey.shade600),
                       ),
                     ),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     icon: _hourlyLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Icon(LucideIcons.refreshCw),
+                        : const Icon(LucideIcons.refreshCw, size: 18),
                     tooltip: 'Refresh hourly',
                     onPressed: _hourlyLoading
                         ? null

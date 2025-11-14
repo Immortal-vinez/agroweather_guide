@@ -183,7 +183,7 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
 
     // Compute suitability if we have current weather
     final weather = widget.currentWeather;
-    List<Crop> display = filtered;
+    List<Crop> display = List.from(filtered);
     if (weather != null) {
       display.sort((a, b) {
         double score(Crop crop) {
@@ -196,6 +196,13 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
 
         return score(b).compareTo(score(a));
       });
+    }
+
+    // Apply rainy season filtering BEFORE building list to avoid mutating during itemBuilder
+    if (isRainyNow && _rainyOnly) {
+      display = display
+          .where((c) => c.season == 'Rainy' || c.season == 'Any')
+          .toList();
     }
 
     return CustomScrollView(
@@ -298,11 +305,6 @@ class _CropRecommendationScreenState extends State<CropRecommendationScreen> {
               if (weather != null) {
                 final tempMid = (crop.minTemp + crop.maxTemp) / 2.0;
                 final tempDiff = (weather.temperature - tempMid).abs();
-                if (isRainyNow && _rainyOnly) {
-                  display = display
-                      .where((c) => c.season == 'Rainy' || c.season == 'Any')
-                      .toList();
-                }
                 final tempRange = (crop.maxTemp - crop.minTemp) / 2.0;
                 suitability = (1.0 - (tempDiff / (tempRange + 0.1))).clamp(
                   0.0,
@@ -843,9 +845,13 @@ class _ModeButton extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: fg),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
