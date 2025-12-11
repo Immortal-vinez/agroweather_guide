@@ -9,6 +9,8 @@ import '../config/env.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/forecast_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'chat_screen.dart';
+import '../utils/responsive.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -18,7 +20,7 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  final String _weatherApiKey = Env.openWeatherApiKey;
+  final String _weatherApiKey = Env.agroMonitoringApiKey;
   bool get _demoMode => !Env.hasApiKey;
   double? _userLat;
   double? _userLon;
@@ -37,8 +39,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
     Future.delayed(const Duration(seconds: 3), () {
       if (_userLat == null && _userLon == null) {
         setState(() {
-          _userLat = -1.286389; // Default to Nairobi
-          _userLon = 36.817223;
+          _userLat = -12.9714; // Default to Ndola, Zambia
+          _userLon = 28.6367;
         });
       }
     });
@@ -130,7 +132,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFE3F2FD),
       appBar: GradientAppBar(
         title: Row(
           children: [
@@ -143,6 +145,39 @@ class _WeatherScreenState extends State<WeatherScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.messageCircle),
+            onPressed: () {
+              if (!Env.hasChatEnabled) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Chat requires Gemini API key. Get one at aistudio.google.com'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    latitude: _userLat,
+                    longitude: _userLon,
+                    locationName: 'Current Location',
+                  ),
+                ),
+              );
+            },
+            tooltip: 'AgriBot Chat',
+          ),
+          IconButton(
+            icon: Icon(LucideIcons.map),
+            onPressed: () {
+              Navigator.pushNamed(context, '/fields');
+            },
+            tooltip: 'My Fields',
+          ),
           IconButton(
             icon: Icon(LucideIcons.refreshCw),
             onPressed: _refreshWeather,
@@ -284,23 +319,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_demoMode)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Card(
-                  color: const Color(0xFFFFF3E0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: Text(
-                      'Demo data shown. Set OPENWEATHER_API_KEY via --dart-define to enable live data.',
-                      style: TextStyle(color: Color(0xFFEF6C00)),
-                    ),
-                  ),
-                ),
-              ),
             // Hero Weather Card
             _buildHeroWeatherCard(weather),
             const SizedBox(height: 16),
@@ -315,6 +333,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
             const SizedBox(height: 16),
             // Additional Weather Info
             _buildAdditionalInfo(weather),
+            const SizedBox(height: 16),
+            // Field Mapping Card
+            _buildFieldMappingCard(),
             const SizedBox(height: 24),
           ],
         ),
@@ -366,10 +387,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Lat: ${_userLat!.toStringAsFixed(2)}, Lon: ${_userLon!.toStringAsFixed(2)}',
+              'Ndola, Zambia',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.8),
-                fontSize: 12,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 24),
@@ -435,8 +457,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildWeatherDetailsGrid(Weather weather) {
-    const crossAxisCount = 2;
-    const spacing = 12.0;
+    final crossAxisCount =
+        Responsive.getGridCount(context, mobile: 2, tablet: 3, desktop: 4);
+    final spacing = Responsive.getSpacing(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -959,5 +982,107 @@ class _WeatherScreenState extends State<WeatherScreen> {
     } else {
       return LucideIcons.cloudSun;
     }
+  }
+
+  Widget _buildFieldMappingCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF4CAF50), Color(0xFF81C784)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.pushNamed(context, '/fields');
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Map Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.map,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Title
+                const Text(
+                  'Create a Boundary for Your Field',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Subtitle
+                Text(
+                  'Get live agricultural data for your specific location',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Action hint
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Tap to Start',
+                        style: TextStyle(
+                          color: Color(0xFF4CAF50),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        LucideIcons.arrowRight,
+                        color: Color(0xFF4CAF50),
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -1,6 +1,9 @@
+// ignore_for_file: use_build_context_synchronously
+
 import '../widgets/gradient_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/env.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -67,6 +70,192 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Cached data cleared')),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    final hasApiKey = Env.hasApiKey;
+    final apiKeyStatus =
+        hasApiKey ? '✓ API Key Configured' : '⚠ API Key Not Set';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.agriculture, color: Color(0xFF4CAF50)),
+            const SizedBox(width: 12),
+            const Text('AgroWeather Guide'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Version 1.0.0',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Weather, crops, planning, and alerts for farmers.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+
+              // API Status Section
+              const Text(
+                'API Configuration',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    hasApiKey ? Icons.check_circle : Icons.warning,
+                    color: hasApiKey ? Colors.green : Colors.orange,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    apiKeyStatus,
+                    style: TextStyle(
+                      color: hasApiKey ? Colors.green : Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              if (!hasApiKey) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Running in Demo Mode',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFEF6C00),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'To enable live weather data and field monitoring:',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '1. Get a FREE API key from:\\nhttps://openweathermap.org/api',
+                        style: TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '2. Run with:\\nflutter run --dart-define=OPENWEATHER_API_KEY=your_key',
+                        style: TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Active Features:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text('✓ Real-time weather data',
+                          style: TextStyle(fontSize: 13)),
+                      Text('✓ Weather forecasts',
+                          style: TextStyle(fontSize: 13)),
+                      Text('✓ Field-specific monitoring',
+                          style: TextStyle(fontSize: 13)),
+                      Text('✓ Soil data & NDVI',
+                          style: TextStyle(fontSize: 13)),
+                      Text('✓ Agro Monitoring API',
+                          style: TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+
+              // Features Section
+              const Text(
+                'Features',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 8),
+              const Text('• Current weather & forecasts',
+                  style: TextStyle(fontSize: 13)),
+              const Text('• Crop library & planning',
+                  style: TextStyle(fontSize: 13)),
+              const Text('• Interactive field mapping',
+                  style: TextStyle(fontSize: 13)),
+              const Text('• Vegetation health (NDVI)',
+                  style: TextStyle(fontSize: 13)),
+              const Text('• Soil monitoring', style: TextStyle(fontSize: 13)),
+              const Text('• Task reminders & alerts',
+                  style: TextStyle(fontSize: 13)),
+              const Text('• Offline support', style: TextStyle(fontSize: 13)),
+
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+
+              // Data Sources
+              const Text(
+                'Data Sources',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '• OpenWeather API - Weather data',
+                style: TextStyle(fontSize: 13),
+              ),
+              const Text(
+                '• Agro Monitoring API - Field data',
+                style: TextStyle(fontSize: 13),
+              ),
+              const Text(
+                '• OpenStreetMap - Map tiles',
+                style: TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -198,16 +387,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('About'),
                   subtitle: const Text('AgroWeather Guide'),
                   onTap: () {
-                    showAboutDialog(
-                      context: context,
-                      applicationName: 'AgroWeather Guide',
-                      applicationVersion: '1.0.0',
-                      applicationIcon: const Icon(Icons.agriculture),
-                      children: const [
-                        Text(
-                            'Weather, crops, planning, and alerts for farmers.'),
-                      ],
-                    );
+                    _showAboutDialog(context);
                   },
                 ),
               ],

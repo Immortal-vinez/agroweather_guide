@@ -48,7 +48,7 @@ class CropDetailsScreen extends StatelessWidget {
     final seasonColor = _getSeasonColor(crop.season);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFE3F2FD),
       appBar: GradientAppBar(title: Text(crop.name)),
       body: SingleChildScrollView(
         child: Column(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/field_management_screen.dart';
 import 'services/notification_service.dart';
 import 'services/reminder_service.dart';
 
@@ -18,6 +19,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'AgroWeather Guide',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Roboto',
         scaffoldBackgroundColor: const Color(0xFFE3F2FD), // Light Blue 50
@@ -48,6 +50,9 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const DashboardScreen(),
+      routes: {
+        '/fields': (context) => const FieldManagementScreen(),
+      },
     );
   }
 }

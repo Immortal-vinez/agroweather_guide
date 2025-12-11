@@ -1,30 +1,52 @@
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/weather_forecast.dart';
 import '../models/weather.dart';
 
+/// Weather service using Agro Monitoring API for agricultural weather data
 class WeatherService {
+  static const String _baseUrl = 'https://api.agromonitoring.com/agro/1.0';
+  final String apiKey;
+  final bool demoMode;
+
+  WeatherService(this.apiKey, {this.demoMode = false});
+
+  /// Fetch current weather using Agro Monitoring API
   Future<Weather> fetchCurrentWeather(double lat, double lon) async {
-    // Demo or missing key - return sample weather data to keep UI responsive
-    if (demoMode || apiKey.isEmpty || apiKey.toLowerCase() == 'demo') {
+    if (demoMode || apiKey.isEmpty) {
       return _getDemoWeatherData();
     }
 
     final url = Uri.parse(
-      'https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lon&units=metric&appid=$apiKey',
+      '$_baseUrl/weather?lat=$lat&lon=$lon&appid=$apiKey',
     );
+
     try {
+      print('🌤️ Fetching weather from Agro Monitoring API...');
       final response = await http.get(url).timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('✅ Weather data received');
         return Weather.fromJson(data);
+      } else if (response.statusCode == 401) {
+        print('❌ Invalid API key');
+        print('🔑 Get your key at: https://agromonitoring.com/api');
+        return _getDemoWeatherData();
       } else {
-        throw Exception(
-          'Failed to load current weather (HTTP ${response.statusCode})',
-        );
+        print('⚠️ Weather API error: ${response.statusCode}');
+        return _getDemoWeatherData();
       }
     } catch (e) {
-      throw Exception('Failed to load current weather: $e');
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Failed to fetch') ||
+          errorMsg.contains('ClientException')) {
+        print('🌐 Web CORS Error: Browser blocked request');
+        print(
+            '💡 Use mobile/desktop app or run Chrome with --disable-web-security');
+      }
+      return _getDemoWeatherData();
     }
   }
 
@@ -72,88 +94,5 @@ class WeatherService {
     if (hour < 12) return scenarios[0]; // Morning
     if (hour < 18) return scenarios[1]; // Afternoon
     return scenarios[2]; // Evening
-  }
-
-  final String apiKey;
-  final bool demoMode;
-  WeatherService(this.apiKey, {this.demoMode = false});
-
-  Future<List<HourlyForecast>> fetchHourlyForecast(
-    double lat,
-    double lon,
-  ) async {
-    final url = Uri.parse(
-      'https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&exclude=current,minutely,daily,alerts&units=metric&appid=$apiKey',
-    );
-    try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> hourly = data['hourly'];
-        return hourly.map((e) => HourlyForecast.fromJson(e)).toList();
-      } else {
-        throw Exception(
-          'Failed to load hourly forecast (HTTP ${response.statusCode})',
-        );
-      }
-    } catch (e) {
-      throw Exception('Failed to load hourly forecast: $e');
-    }
-  }
-
-  Future<List<DailyForecast>> fetchDailyForecast(double lat, double lon) async {
-    final url = Uri.parse(
-      'https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&exclude=current,minutely,hourly,alerts&units=metric&appid=$apiKey',
-    );
-    try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> daily = data['daily'];
-        return daily.map((e) => DailyForecast.fromJson(e)).toList();
-      } else {
-        throw Exception(
-          'Failed to load daily forecast (HTTP ${response.statusCode})',
-        );
-      }
-    } catch (e) {
-      throw Exception('Failed to load daily forecast: $e');
-    }
-  }
-
-  Future<List<Weather>> fetchWeatherForecast(double lat, double lon) async {
-    final url = Uri.parse(
-      'https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&exclude=current,minutely,hourly,alerts&units=metric&appid=$apiKey',
-    );
-    try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> daily = data['daily'];
-        // Note: daily items from One Call have a different shape than current weather
-        // Expose as DailyForecast instead of mapping to Weather to avoid schema mismatch.
-        return daily
-            .map((e) => DailyForecast.fromJson(e))
-            .map(
-              (d) => Weather(
-                description: d.condition,
-                temperature: d.maxTemp,
-                condition: d.condition,
-                forecast: d.condition,
-                rainfall: d.rainfall,
-                humidity: 0,
-                windSpeed: 0,
-                pressure: 0,
-              ),
-            )
-            .toList();
-      } else {
-        throw Exception(
-          'Failed to load weather forecast (HTTP ${response.statusCode})',
-        );
-      }
-    } catch (e) {
-      throw Exception('Failed to load weather forecast: $e');
-    }
   }
 }

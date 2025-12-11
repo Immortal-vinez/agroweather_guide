@@ -8,20 +8,23 @@ class Weather {
         rainfall = (json['rain'] as num?)?.toDouble() ?? 0.0;
       }
     }
+
+    // Convert temperature from Kelvin to Celsius
+    // Agro Monitoring API returns temperature in Kelvin
+    final tempKelvin = (json['main']?['temp'] as num?)?.toDouble() ?? 0.0;
+    final tempCelsius = tempKelvin > 200 ? tempKelvin - 273.15 : tempKelvin;
+
     return Weather(
-      description:
-          json['weather'] != null && json['weather'].isNotEmpty
-              ? json['weather'][0]['description'] ?? ''
-              : '',
-      temperature: (json['main']?['temp'] as num?)?.toDouble() ?? 0.0,
-      condition:
-          json['weather'] != null && json['weather'].isNotEmpty
-              ? json['weather'][0]['main'] ?? ''
-              : '',
-      forecast:
-          json['weather'] != null && json['weather'].isNotEmpty
-              ? json['weather'][0]['description'] ?? ''
-              : '',
+      description: json['weather'] != null && json['weather'].isNotEmpty
+          ? json['weather'][0]['description'] ?? ''
+          : '',
+      temperature: tempCelsius,
+      condition: json['weather'] != null && json['weather'].isNotEmpty
+          ? json['weather'][0]['main'] ?? ''
+          : '',
+      forecast: json['weather'] != null && json['weather'].isNotEmpty
+          ? json['weather'][0]['description'] ?? ''
+          : '',
       rainfall: rainfall,
       humidity: (json['main']?['humidity'] as num?)?.toDouble() ?? 0.0,
       windSpeed: (json['wind']?['speed'] as num?)?.toDouble() ?? 0.0,

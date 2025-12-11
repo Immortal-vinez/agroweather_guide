@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../widgets/weather_stat_card.dart';
 import '../widgets/water_analytics_card.dart';
-import '../widgets/dashboard_header.dart';
 import '../widgets/alert_banner.dart';
 import '../widgets/crop_recommendation_card.dart';
 import '../widgets/recent_alerts_section.dart';
@@ -32,6 +31,9 @@ import '../services/locations_service.dart';
 import 'add_crop_plan_screen.dart';
 import '../widgets/gradient_app_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/dashboard_info_card.dart';
+import '../widgets/irrigation_slideshow_card.dart';
+import '../utils/responsive.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -46,7 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<String> _userNotes = [];
 
   // API key sourced from --dart-define to avoid hardcoding secrets
-  final String _weatherApiKey = Env.openWeatherApiKey;
+  final String _weatherApiKey = Env.agroMonitoringApiKey;
   bool get _demoMode => !Env.hasApiKey;
   bool _isOffline = false;
 
@@ -128,15 +130,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _useDefaultLocation() async {
-    // Default to Nairobi, Kenya (you can change these coords)
-    const double defaultLat = -1.286389;
-    const double defaultLon = 36.817223;
+    // Default to Ndola, Zambia
+    const double defaultLat = -12.9714;
+    const double defaultLon = 28.6367;
     setState(() {
       _userLat = defaultLat;
       _userLon = defaultLon;
       _locationIssue = null;
+      _locationLabel = 'Ndola, Zambia';
     });
-    _refreshLocationLabel();
     _computeOutlook();
     _computeDailyForecast();
   }
@@ -278,8 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final cityChanged = (newCity != null && newCity != _lastCity);
     setState(() {
-      _locationLabel = label ??
-          'Lat: ${lat.toStringAsFixed(2)}, Lon: ${lon.toStringAsFixed(2)}';
+      _locationLabel = label ?? 'Ndola, Zambia';
       if (newCity != null) _lastCity = newCity;
     });
 
@@ -935,14 +936,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return const Center(child: Text('No weather data available'));
         }
         final weather = snapshot.data!;
-        final hour = DateTime.now().hour;
         String tip;
         if (weather.condition.toLowerCase().contains('rain')) {
           tip = 'Rain expected. Ensure proper drainage for your crops.';
         } else if (weather.temperature > 30) {
           tip = 'High temperature! Water your crops early in the morning.';
-        } else if (hour < 10) {
-          tip = 'Morning is the best time to irrigate your fields.';
         } else {
           tip = 'Monitor your crops for pests and diseases regularly.';
         }
@@ -955,26 +953,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_isOffline) OfflineBanner(onRetry: _refreshData),
-              if (_demoMode)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Card(
-                    color: const Color(0xFFFFF3E0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(12.0),
-                      child: Text(
-                        'Demo data shown. Set OPENWEATHER_API_KEY via --dart-define to enable live data.',
-                        style: TextStyle(color: Color(0xFFEF6C00)),
-                      ),
-                    ),
-                  ),
-                ),
+              const SizedBox(height: 10),
+              // Risk Alert Section
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: DashboardHeader(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AlertBanner(message: tip),
+              ),
+              const SizedBox(height: 12),
+              // Dashboard App Info
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: DashboardInfoCard(
                   location: _locationLabel ??
                       ((_effLat ?? _userLat) != null &&
                               (_effLon ?? _userLon) != null
@@ -982,15 +971,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           : 'Locating...'),
                   lastUpdate:
                       '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-                  onRefresh: _refreshData,
                   onLocationTap: _openLocationManager,
                 ),
-              ),
-              const SizedBox(height: 10),
-              // Risk Alert Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: AlertBanner(message: tip),
               ),
               const SizedBox(height: 12),
               // Water Analytics Card
@@ -1011,6 +993,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   );
                 },
+              ),
+              const SizedBox(height: 12),
+              // Irrigation Types Slideshow
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: IrrigationSlideshowCard(),
               ),
               const SizedBox(height: 12),
               // Weather Stat Cards (Temperature & Rainfall)
@@ -1461,10 +1449,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        padding: const EdgeInsets.all(16),
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: [dashboardPage, weatherPage, cropsPage, settingsPage],
+        child: ResponsiveWrapper(
+          child: Padding(
+            padding: Responsive.getPadding(context),
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: [dashboardPage, weatherPage, cropsPage, settingsPage],
+            ),
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
